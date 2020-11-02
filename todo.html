@@ -1,0 +1,59 @@
+<!--
+ * @Author: Aydon
+ * @Date: 2020-11-02 12:27:45
+ * @LastEditors: Aydon
+ * @LastEditTime: 2020-11-02 14:42:56
+ * @Description: file content
+ * @FilePath: \todo-app\todo.html
+-->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Vue Todo Tutorial</title>
+    <style>
+        .empty {
+            border-color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <input type="text" v-bind:class="{ empty: !count }" v-model="value">
+        <input type="button" value="send" v-on:click="send">
+        <div v-if="count">
+            value 的值是: {{ value }}
+        </div>
+        <div>字数: {{ count }} </div>
+    </div>
+</body>
+<script src="https://cdn.bootcss.com/vue/2.5.16/vue.js"></script>
+<script>
+    var app = new Vue({
+        el: '#app',
+        data: function () {
+            return {
+                value: "",
+            }
+        },
+        methods: {
+            send: function () {
+                if (!this.count) {
+                    alert("请输入内容")
+                    return
+                }
+                alert("发送成功")
+                this.value = ""
+            }
+        },
+        computed: {
+            count: function () {
+                return this.value.length
+            }
+        }
+    })
+</script>
+
+</html>
