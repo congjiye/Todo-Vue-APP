@@ -16,17 +16,30 @@
         .empty {
             border-color: red;
         }
+
+        .completed {
+            text-decoration: line-through;
+        }
     </style>
 </head>
 
 <body>
     <div id="app">
-        <input type="text" v-bind:class="{ empty: !count }" v-model="value">
-        <input type="button" value="send" v-on:click="send">
-        <div v-if="count">
-            value 的值是: {{ value }}
-        </div>
-        <div>字数: {{ count }} </div>
+        <input type="text" placeholder="添加 todo" v-model="newTodoTitle" :class="{empty: !newTodoTitle}"
+            @keyup.enter="addTodo">
+        <span v-if="!newTodoTitle" style="color: red;">请输入内容</span>
+        <ul>
+            <li v-for="todo in todos" :keys="todo.id">
+                <span :class="{completed: todo.completed}" @dblclick="editTodo(todo)">{{ todo.title }}</span>
+                <input type="button" :value="todo.completed ? '标为未完成' : '标为完成'"
+                    @click="todo.completed = !todo.completed">
+                <input type="button" value="删除" @click="removeTodo(todo)">
+                <input type="text" value="编辑 todo ..." v-model="todo.title"
+                    v-if="editedTodo !== null && editedTodo.id === todo.id" @keyup.enter="editDone(todo)"
+                    @keyup.esc="cancelEdit(todo)">
+            </li>
+        </ul>
+        <button @click="redoTodo" v-if="previousTodo">撤销</button>
     </div>
 </body>
 <script src="https://cdn.bootcss.com/vue/2.5.16/vue.js"></script>
@@ -35,22 +48,50 @@
         el: '#app',
         data: function () {
             return {
-                value: "",
+                todos: [],
+                newTodoTitle: '',
+                previousTodo: null,
+                editedTodo: null
             }
         },
         methods: {
-            send: function () {
-                if (!this.count) {
-                    alert("请输入内容")
+            addTodo() {
+                if (!this.newTodoTitle) {
                     return
                 }
-                alert("发送成功")
-                this.value = ""
+                this.todos.push(
+                    { id: this.id, title: this.newTodoTitle, completed: false }
+                )
+                this.newTodoTitle = ""
+            },
+            removeTodo(todo) {
+                if (todo.title) {
+                    this.previousTodo = todo
+                }
+                this.todos.splice(this.todos.indexOf(todo), 1)
+            },
+            redoTodo() {
+                this.todos.push(this.previousTodo)
+                this.todos.sort((a, b) => a.id - b.id)
+                this.previousTodo = null
+            },
+            editTodo(todo) {
+                this.editedTodo = { id: todo.id, title: todo.title }
+            },
+            editDone(todo) {
+                if (!todo.title) {
+                    this.removeTodo(todo)
+                }
+                this.editedTodo = null;
+            },
+            cancelEdit(todo) {
+                todo.title = this.editedTodo.title
+                this.editedTodo = null
             }
         },
         computed: {
-            count: function () {
-                return this.value.length
+            id() {
+                return this.todos.length
             }
         }
     })
