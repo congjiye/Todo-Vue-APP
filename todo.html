@@ -2,7 +2,7 @@
  * @Author: Aydon
  * @Date: 2020-11-02 12:27:45
  * @LastEditors: Aydon
- * @LastEditTime: 2020-11-06 19:52:43
+ * @LastEditTime: 2020-11-16 17:06:44
  * @Description: file content
  * @FilePath: \todo-app\todo.html
 -->
@@ -12,7 +12,16 @@
 <head>
     <meta charset="UTF-8">
     <title>Vue Todo Tutorial</title>
-    <style>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=0">
+    <style> 
+        #app {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            min-width: 300px;
+        }
+
         .empty {
             border-color: red;
         }
@@ -20,78 +29,160 @@
         .completed {
             text-decoration: line-through;
         }
+
+        .selected {
+            color: white;
+            background-color: red;
+            border: 1px solid red;
+        }
     </style>
 </head>
 
 <body>
     <div id="app">
+        <button @click="redoTodo" :disabled="prevTodo === null">撤销</button>
         <input type="text" placeholder="添加 todo" v-model="newTodoTitle" :class="{empty: !newTodoTitle}"
             @keyup.enter="addTodo">
         <span v-if="!newTodoTitle" style="color: red;">请输入内容</span>
+
         <ul>
-            <li v-for="todo in todos" :keys="todo.id">
+            <li v-for="todo in filteredTodos" :keys="todo.id">
                 <span :class="{completed: todo.completed}" @dblclick="editTodo(todo)">{{ todo.title }}</span>
-                <input type="button" :value="todo.completed ? '标为未完成' : '标为完成'"
-                    @click="todo.completed = !todo.completed">
+                <input type="button" :value="todo.completed ? '标为未完成' : '标为已完成'" @click="markAsCompletedOrNot(todo)">
                 <input type="button" value="删除" @click="removeTodo(todo)">
-                <input type="text" value="编辑 todo ..." v-model="todo.title"
+                <input type="text" value="编辑 todo ..." v-model="todo.title" v-focus="true"
                     v-if="editedTodo !== null && editedTodo.id === todo.id" @keyup.enter="editDone(todo)"
                     @keyup.esc="cancelEdit(todo)">
             </li>
         </ul>
-        <button @click="redoTodo" v-if="previousTodo">撤销</button>
+
+        <div v-if="todos.length > 0">
+            <span v-if="!(leftTodosCount | intention !== 'all')">
+                全部完成，你真是太优秀了
+            </span>
+            <span v-if="leftTodosCount | intention !== 'all'">
+                剩余 {{ leftTodosCount }} 项未完成
+            </span>
+            <span>筛选:
+                <input type="button" :class="{ selected: intention === 'all'}" value="全部" @click="intention='all'">
+                <input type="button" :class="{ selected: intention === 'ongoing'}" value="进行中"
+                    @click="intention='ongoing'">
+                <input type="button" :class="{ selected: intention === 'finished'}" value="已完成"
+                    @click="intention='finished'">
+                <button @click="clearCompleted">清除已完成</button>
+                <button @click="clearAll">清除全部</button>
+            </span>
+            <button :disabled="allCompleted === undefined" @click="markAllAsCompleted">全部标为完成</button>
+        </div>
     </div>
 </body>
 <script src="https://cdn.bootcss.com/vue/2.5.16/vue.js"></script>
 <script>
-    var app = new Vue({
+    const STORAGE_KEY = "todo-app"
+    const todoStorage = {
+        fetch() {
+            let todos = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+            todos.forEach((todo, index) => {
+                todo.id = index
+            })
+            todoStorage.uid = todos.length;
+            return todos
+        },
+        save(todos) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(todos))
+        }
+    }
+    const app = new Vue({
         el: '#app',
         data: function () {
             return {
-                todos: [],
+                todos: todoStorage.fetch(),
                 newTodoTitle: '',
-                previousTodo: null,
-                editedTodo: null
+                editedTodo: null,
+                prevTodo: null,
+                intention: 'all'
             }
         },
         methods: {
             addTodo() {
-                if (!this.newTodoTitle) {
-                    return
-                }
-                this.todos.push(
-                    { id: this.id, title: this.newTodoTitle, completed: false }
-                )
-                this.newTodoTitle = ""
-            },
-            removeTodo(todo) {
-                if (todo.title) {
-                    this.previousTodo = todo
-                }
-                this.todos.splice(this.todos.indexOf(todo), 1)
+                this.todos.push({ id: this.id, title: this.newTodoTitle, completed: false })
+                this.newTodoTitle = ''
             },
             redoTodo() {
-                this.todos.push(this.previousTodo)
+                this.todos.push(this.prevTodo)
                 this.todos.sort((a, b) => a.id - b.id)
-                this.previousTodo = null
+                this.prevTodo = null
+            },
+            markAsCompletedOrNot(todo) {
+                todo.completed = !todo.completed
+            },
+            markAllAsCompleted() {
+                this.todos.map((todo) => todo.completed = true)
+            },
+            removeTodo(todo) {
+                this.prevTodo = todo
+                this.todos.splice(this.todos.indexOf(todo), 1)
             },
             editTodo(todo) {
-                this.editedTodo = { id: todo.id, title: todo.title }
+                this.editedTodo = { id: todo.id, title: todo.title, completed: todo.completed }
             },
             editDone(todo) {
-                if (!todo.title) {
+                if (todo.title.length === 0) {
                     this.removeTodo(todo)
                 }
-                this.editedTodo = null;
+                this.editedTodo = null
             },
             cancelEdit(todo) {
                 todo.title = this.editedTodo.title
                 this.editedTodo = null
+            },
+            clearCompleted() {
+                this.todos = this.todos.filter(todo => !todo.completed)
+            },
+            clearAll() {
+                this.todos = []
             }
         },
         computed: {
             id() {
                 return this.todos.length
+            },
+            allCompleted() {
+                return this.todos.find(value => {
+                    if (!value.completed) {
+                        return value
+                    }
+                })
+            },
+            leftTodos() {
+                return this.todos.filter(todo => !todo.completed)
+            },
+            leftTodosCount() {
+                return this.leftTodos.length
+            },
+            filteredTodos() {
+                if (this.intention === 'ongoing') {
+                    return this.leftTodos
+                } else if (this.intention === 'finished') {
+                    return this.todos.filter(todo => todo.completed)
+                } else {
+                    return this.todos
+                }
+            }
+        },
+        watch: {
+            todos: {
+                handler(todos) {
+                    todoStorage.save(todos)
+                },
+                deep: true
+            }
+        },
+        directives: {
+            focus: {
+                inserted(el) {
+                    el.focus()
+                }
             }
         }
     })
